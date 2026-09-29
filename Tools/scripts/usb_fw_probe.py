@@ -3,13 +3,14 @@
 Detect ArduPilot flight controllers on USB, identify the board ID and list
 the firmware available for it on firmware.ardupilot.org.
 
-Optionally monitor the board for I2C interrupt storms (internal error
-i2c_isr, bit 19) while you try to reproduce them.
+By default lists the targets that can be built from this source tree
+(hwdef boards whose APJ_BOARD_ID or name matches the connected board).
+With --online it also lists prebuilt firmware from firmware.ardupilot.org.
 
 usage:
-  usb_fw_probe.py                       # scan, identify, list firmware
-  usb_fw_probe.py --vehicle Copter      # filter the firmware list
-  usb_fw_probe.py --port /dev/ttyACM0 --monitor-i2c
+  usb_fw_probe.py                       # scan, identify, list buildable targets
+  usb_fw_probe.py --online              # also list prebuilt firmware
+  usb_fw_probe.py --port /dev/ttyACM0 --vehicle Copter
 
 requires: pyserial, pymavlink
 
@@ -51,8 +52,6 @@ BL_GET_DEVICE = 0x22
 BL_INFO_BL_REV = 0x01
 BL_INFO_BOARD_ID = 0x02
 
-I2C_ISR_ERROR_BIT = 1 << 19
-
 
 def load_board_names():
     '''map board_id -> name from Tools/AP_Bootloader/board_types.txt'''
@@ -68,6 +67,53 @@ def load_board_names():
     except OSError:
         pass
     return names
+
+
+def hwdef_board_id(path, name_to_id, seen=None):
+    '''follow includes in a hwdef file; return (board_id or None, is_periph)'''
+    seen = seen if seen is not None else set()
+    path = os.path.normpath(path)
+    if path in seen or not os.path.exists(path):
+        return (None, False)
+    seen.add(path)
+    board_id = None
+    periph = False
+    with open(path) as f:
+        for line in f:
+            words = line.split('#')[0].split()
+            if not words:
+                continue
+            if words[0] == 'include' and len(words) > 1:
+                inc_id, inc_periph = hwdef_board_id(os.path.join(os.path.dirname(path), words[1]), name_to_id, seen)
+                if inc_id is not None:
+                    board_id = inc_id
+                periph = periph or inc_periph
+            elif words[0] == 'undef' and 'APJ_BOARD_ID' in words[1:]:
+                board_id = None
+            elif words[0] == 'APJ_BOARD_ID' and len(words) > 1:
+                v = words[1]
+                board_id = int(v, 0) if v[0].isdigit() else name_to_id.get(v)
+            elif any(w.startswith('AP_PERIPH') for w in words[:2]) or 'AP_PERIPH' in words:
+                periph = True
+    return (board_id, periph)
+
+
+def local_targets(board_names):
+    '''scan libraries/AP_HAL_ChibiOS/hwdef; return list of (target, board_id, is_periph)'''
+    name_to_id = {}
+    for bid, names in board_names.items():
+        for n in names:
+            name_to_id[n] = bid
+    here = os.path.dirname(os.path.abspath(__file__))
+    hwdef_dir = os.path.normpath(os.path.join(here, "..", "..", "libraries", "AP_HAL_ChibiOS", "hwdef"))
+    targets = []
+    for d in sorted(os.listdir(hwdef_dir)):
+        hwdef = os.path.join(hwdef_dir, d, "hwdef.dat")
+        if not os.path.exists(hwdef):
+            continue
+        bid, periph = hwdef_board_id(hwdef, name_to_id)
+        targets.append((d, bid, periph))
+    return targets
 
 
 def find_ports():
@@ -165,42 +211,36 @@ def list_firmware(manifest, board_id, vehicle=None, release=None):
     return rows
 
 
-def monitor_i2c(device, baud, duration):
-    '''watch SYS_STATUS/HEARTBEAT/STATUSTEXT for the i2c_isr internal error'''
-    from pymavlink import mavutil
-    conn = mavutil.mavlink_connection(device, baud=baud, autoreconnect=True)
-    conn.wait_heartbeat(timeout=10)
-    # ask for SYS_STATUS at 2Hz
-    conn.mav.command_long_send(conn.target_system, conn.target_component,
-                               mavutil.mavlink.MAV_CMD_SET_MESSAGE_INTERVAL, 0,
-                               mavutil.mavlink.MAVLINK_MSG_ID_SYS_STATUS, 500000, 0, 0, 0, 0, 0)
-    print("Monitoring for I2C ISR storm (internal error bit 19) - Ctrl-C to stop")
-    print("Now disturb the I2C bus (see notes printed at the end).")
-    last_errors = None
-    last_count = None
-    end = time.time() + duration if duration else None
-    try:
-        while end is None or time.time() < end:
-            m = conn.recv_match(type=['SYS_STATUS', 'HEARTBEAT', 'STATUSTEXT'], blocking=True, timeout=2)
-            if m is None:
-                continue
-            t = m.get_type()
-            if t == 'STATUSTEXT':
-                print("%s STATUSTEXT: %s" % (time.strftime("%H:%M:%S"), m.text))
-            elif t == 'HEARTBEAT' and m.system_status == mavutil.mavlink.MAV_STATE_CRITICAL:
-                print("%s HEARTBEAT system_status=CRITICAL (internal error set)" % time.strftime("%H:%M:%S"))
-            elif t == 'SYS_STATUS':
-                errors = m.errors_count1 | (m.errors_count2 << 16)
-                count = m.errors_count4
-                if errors != last_errors or count != last_count:
-                    flag = " <== I2C ISR STORM DETECTED" if errors & I2C_ISR_ERROR_BIT else ""
-                    print("%s internal_errors=0x%08x count=%u%s" %
-                          (time.strftime("%H:%M:%S"), errors, count, flag))
-                    last_errors, last_count = errors, count
-    except KeyboardInterrupt:
-        pass
-    finally:
-        conn.close()
+VEHICLE_TARGETS = ["copter", "heli", "plane", "rover", "sub", "antennatracker", "blimp"]
+
+
+def print_buildable(targets, board_id, product_name, vehicle):
+    '''print waf commands for local hwdef targets matching the board'''
+    by_name = {t[0]: t for t in targets}
+    matches = [t for t in targets if board_id is not None and t[1] == board_id]
+    if product_name in by_name and by_name[product_name] not in matches:
+        matches.insert(0, by_name[product_name])
+    if not matches:
+        print("\nNo hwdef in libraries/AP_HAL_ChibiOS/hwdef matches this board.")
+        return
+    # the USB product string is the board name of the running firmware, so it is the best match
+    matches.sort(key=lambda t: (t[0] != product_name, t[0].lower()))
+    print("\nBuildable targets in this source tree (%u):" % len(matches))
+    for name, bid, periph in matches:
+        tag = "  <== matches USB board name" if name == product_name else ""
+        print("  %-28s board_id=%s%s%s" % (name, bid, " (AP_Periph)" if periph else "", tag))
+    name, _, periph = matches[0]
+    if periph:
+        vehicles = ["AP_Periph"]
+    elif vehicle:
+        vehicles = [vehicle.lower()]
+    else:
+        vehicles = VEHICLE_TARGETS
+    print("\nTo build for %s:" % name)
+    print("  ./waf configure --board %s" % name)
+    for v in vehicles:
+        print("  ./waf %s" % v)
+    print("Output: build/%s/bin/*.apj  (flash with Tools/scripts/uploader.py)" % name)
 
 
 def main():
@@ -208,19 +248,21 @@ def main():
     parser.add_argument("--port", help="serial device (default: auto-detect)")
     parser.add_argument("--baud", type=int, default=115200)
     parser.add_argument("--timeout", type=float, default=5)
-    parser.add_argument("--vehicle", help="Copter, Plane, Rover, Sub, Heli, AntennaTracker, Blimp, AP_Periph")
-    parser.add_argument("--release", help="OFFICIAL, BETA, DEV, STABLE ...")
-    parser.add_argument("--board-id", type=int, help="skip detection and use this board id")
-    parser.add_argument("--monitor-i2c", action="store_true", help="monitor for I2C ISR storms after probing")
-    parser.add_argument("--duration", type=float, default=0, help="monitor duration in seconds (0=forever)")
+    parser.add_argument("--vehicle", help="copter, heli, plane, rover, sub, antennatracker, blimp")
+    parser.add_argument("--release", help="with --online: OFFICIAL, BETA, DEV ...")
+    parser.add_argument("--board-id", type=int, help="skip USB detection and use this board id")
+    parser.add_argument("--board", help="skip USB detection and use this hwdef board name")
+    parser.add_argument("--online", action="store_true", help="also list prebuilt firmware from firmware.ardupilot.org")
     parser.add_argument("--cache", default=os.path.expanduser("~/.cache/ap_manifest.json.gz"))
     args = parser.parse_args()
 
     names = load_board_names()
+    targets = local_targets(names)
     board_id = args.board_id
+    product_name = args.board
     device = args.port
 
-    if board_id is None:
+    if board_id is None and product_name is None:
         ports = [p for p in list_ports.comports() if p.device == device] if device else find_ports()
         if not ports and device:
             ports = [type("P", (), {"device": device, "vid": None, "pid": None,
@@ -241,8 +283,12 @@ def main():
                 print("   vendor: %s" % KNOWN_VIDS[p.vid])
             if p.product and p.product.endswith("-BL"):
                 print("   board is in bootloader mode")
+        if len(ports) > 1:
+            print("Several ports found; using %s (pick another with --port)" % ports[0].device)
 
         device = ports[0].device
+        product = ports[0].product or ""
+        product_name = product[:-3] if product.endswith("-BL") else product
         print("Probing %s via MAVLink ..." % device)
         res = board_id_from_mavlink(device, args.baud, args.timeout)
         if res is not None:
@@ -251,31 +297,30 @@ def main():
         else:
             print("   no MAVLink; trying bootloader protocol ...")
             board_id = board_id_from_bootloader(device, 1.0)
-        if board_id is None:
+        if board_id is None and product_name not in [t[0] for t in targets]:
             print("Could not read board id. Replug the board and run again within a few "
-                  "seconds (bootloader window), or pass --board-id.")
+                  "seconds (bootloader window), or pass --board-id / --board.")
             sys.exit(1)
 
-    print("Board ID: %u (%s)" % (board_id, ", ".join(names.get(board_id, ["unknown in board_types.txt"]))))
+    if board_id is None and product_name:
+        board_id = next((t[1] for t in targets if t[0] == product_name), None)
+    if board_id is not None:
+        print("Board ID: %u (%s)" % (board_id, ", ".join(names.get(board_id, ["unknown in board_types.txt"]))))
 
-    manifest = fetch_manifest(args.cache)
-    rows = list_firmware(manifest, board_id, args.vehicle, args.release)
-    if not rows:
-        print("No firmware found in manifest for board id %u" % board_id)
-    else:
-        print("\n%-10s %-9s %-10s %-22s %-5s %s" % ("vehicle", "release", "version", "platform", "fmt", "url"))
-        for fw in rows:
-            print("%-10s %-9s %-10s %-22s %-5s %s" % (
-                fw.get("vehicletype", ""), fw.get("mav-firmware-version-type", ""),
-                fw.get("mav-firmware-version", ""), fw.get("platform", ""),
-                fw.get("format", ""), fw.get("url", "")))
-        print("\nFlash a .apj with:  Tools/scripts/uploader.py --port %s <file.apj>" % (device or "<port>"))
+    print_buildable(targets, board_id, product_name, args.vehicle)
 
-    if args.monitor_i2c:
-        if device is None:
-            print("--monitor-i2c needs --port")
-            sys.exit(1)
-        monitor_i2c(device, args.baud, args.duration)
+    if args.online and board_id is not None:
+        manifest = fetch_manifest(args.cache)
+        rows = list_firmware(manifest, board_id, args.vehicle, args.release)
+        if not rows:
+            print("\nNo prebuilt firmware found in manifest for board id %u" % board_id)
+        else:
+            print("\n%-10s %-9s %-10s %-22s %-5s %s" % ("vehicle", "release", "version", "platform", "fmt", "url"))
+            for fw in rows:
+                print("%-10s %-9s %-10s %-22s %-5s %s" % (
+                    fw.get("vehicletype", ""), fw.get("mav-firmware-version-type", ""),
+                    fw.get("mav-firmware-version", ""), fw.get("platform", ""),
+                    fw.get("format", ""), fw.get("url", "")))
 
 
 if __name__ == "__main__":
