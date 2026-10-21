@@ -153,10 +153,34 @@ def board_id_from_mavlink(device, baud, timeout):
                 "autopilot_type": hb.autopilot,
                 "mav_type": hb.type,
             }
+            check_gps(conn, timeout)
             return (m.board_version >> 16, info)
     finally:
         conn.close()
     return None
+
+
+GPS_FIX_TYPES = {0: "no GPS", 1: "no fix", 2: "2D fix", 3: "3D fix", 4: "DGPS", 5: "RTK float", 6: "RTK fixed"}
+
+
+def check_gps(conn, timeout):
+    '''report GPS state from GPS_RAW_INT'''
+    from pymavlink import mavutil
+    conn.mav.command_long_send(conn.target_system, conn.target_component,
+                               mavutil.mavlink.MAV_CMD_REQUEST_MESSAGE, 0,
+                               mavutil.mavlink.MAVLINK_MSG_ID_GPS_RAW_INT,
+                               0, 0, 0, 0, 0, 0)
+    m = conn.recv_match(type='GPS_RAW_INT', blocking=True, timeout=timeout)
+    if m is None:
+        print("   GPS: no GPS_RAW_INT received (no GPS configured?)")
+        return
+    print("   GPS: %s, %u satellites, HDOP %.2f" % (
+        GPS_FIX_TYPES.get(m.fix_type, str(m.fix_type)), m.satellites_visible,
+        m.eph * 0.01 if m.eph != 65535 else float('nan')))
+    if m.fix_type >= 2:
+        print("   GPS position: %.7f, %.7f  alt %.1fm" % (m.lat * 1e-7, m.lon * 1e-7, m.alt * 1e-3))
+    elif m.fix_type == 0:
+        print("   GPS not detected: check wiring and SERIALx_PROTOCOL=5 / GPS1_TYPE")
 
 
 def board_id_from_bootloader(device, timeout):
