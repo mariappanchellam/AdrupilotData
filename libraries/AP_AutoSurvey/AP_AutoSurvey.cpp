@@ -267,6 +267,16 @@ void AP_AutoSurvey::update()
 
 // ── callbacks from ArduCopter ────────────────────────────────────
 
+void AP_AutoSurvey::on_auto_mode_failed()
+{
+    // AUTO mode entry failed (e.g. mission was cleared by an RC switch).
+    // Clear the request flag and go back to BUILD so the mission is
+    // rebuilt on the next update() cycle.
+    _want_auto = false;
+    _state     = State::BUILD;
+    send_text(MAV_SEVERITY_WARNING, "AUTO failed — rebuilding mission");
+}
+
 void AP_AutoSurvey::on_mode_changed(uint8_t new_mode)
 {
     if (new_mode == COPTER_MODE_AUTO) {

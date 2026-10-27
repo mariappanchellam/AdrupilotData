@@ -31,6 +31,7 @@ public:
     bool wants_auto_mode() const  { return _want_auto; }
     bool wants_rtl_mode()  const  { return _want_rtl; }
     void on_mode_changed(uint8_t new_mode);
+    void on_auto_mode_failed();
     void on_mission_complete();
 
     static const struct AP_Param::GroupInfo var_info[];

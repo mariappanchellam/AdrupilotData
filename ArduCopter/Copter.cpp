@@ -754,6 +754,11 @@ void Copter::update_auto_survey()
             if (ms != nullptr) {
                 ms->set_current_cmd(1);
             }
+        } else {
+            // Mode switch failed (e.g. mission cleared by RC switch).
+            // Disarm and signal AutoSurvey to rebuild the mission.
+            arming.disarm(AP_Arming::Method::SCRIPTING);
+            g2.auto_survey.on_auto_mode_failed();
         }
     }
     if (g2.auto_survey.wants_rtl_mode()) {
