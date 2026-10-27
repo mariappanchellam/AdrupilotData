@@ -16,7 +16,7 @@ const AP_Param::GroupInfo AP_AutoSurvey::var_info[] = {
     // @Description: Set to 1 from QGroundControl to start the autonomous survey cycle. Set to 0 to stop at any time.
     // @Values: 0:Disabled,1:Enabled
     // @User: Standard
-    AP_GROUPINFO_FLAGS("ENABLE", 0, AP_AutoSurvey, _enable, 0, AP_PARAM_FLAG_ENABLE),
+    AP_GROUPINFO("ENABLE",    0, AP_AutoSurvey, _enable, 0),
 
     // @Param: LAT
     // @DisplayName: Survey Centre Latitude
