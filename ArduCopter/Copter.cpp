@@ -259,6 +259,7 @@ const AP_Scheduler::Task Copter::scheduler_tasks[] = {
     // don't delete this, there is an equivalent (virtual) in AP_Vehicle for the non-rate loop case
     SCHED_TASK(update_dynamic_notch_at_specified_rate_main,                       LOOP_RATE, 200, 215),
 #endif
+    SCHED_TASK_CLASS(AP_AutoSurvey, &copter.g2.auto_survey, update,               10,  100, 218),
 };
 
 void Copter::get_scheduler_tasks(const AP_Scheduler::Task *&tasks,
@@ -737,11 +738,29 @@ void Copter::twentyfive_hz_logging()
 }
 #endif  // HAL_LOGGING_ENABLED
 
+// update_auto_survey - poll AP_AutoSurvey and execute any requested mode changes
+void Copter::update_auto_survey()
+{
+    if (g2.auto_survey.wants_auto_mode()) {
+        if (set_mode(Mode::Number::AUTO, ModeReason::SCRIPTING)) {
+            g2.auto_survey.on_mode_changed(3);
+        }
+    }
+    if (g2.auto_survey.wants_rtl_mode()) {
+        if (set_mode(Mode::Number::RTL, ModeReason::SCRIPTING)) {
+            g2.auto_survey.on_mode_changed(6);
+        }
+    }
+}
+
 // three_hz_loop - 3hz loop
 void Copter::three_hz_loop()
 {
     // check if we've lost contact with the ground station
     failsafe_gcs_check();
+
+    // execute any mode changes requested by AP_AutoSurvey
+    update_auto_survey();
 
     // check if we've lost terrain data
     failsafe_terrain_check();

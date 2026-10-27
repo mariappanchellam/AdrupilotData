@@ -3,6 +3,7 @@
 #define AP_PARAM_VEHICLE_NAME copter
 
 #include <AP_Common/AP_Common.h>
+#include <AP_AutoSurvey/AP_AutoSurvey.h>
 #include "RC_Channel_Copter.h"
 #include <AP_Proximity/AP_Proximity.h>
 #include <AP_SurfaceDistance/AP_SurfaceDistance.h>
@@ -629,6 +630,9 @@ public:
     // object avoidance path planning
     AP_OAPathPlanner oa;
 #endif
+
+    // autonomous timed factory surveillance
+    AP_AutoSurvey auto_survey;
 
 #if MODE_SYSTEMID_ENABLED
     // we need a pointer to the mode for the G2 table

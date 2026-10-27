@@ -1000,6 +1000,10 @@ const AP_Param::GroupInfo ParametersG2::var_info[] = {
     // ID 62 is reserved for the SHOW_... parameters from the Skybrush fork at
     // https://github.com/skybrush-io/ardupilot
 
+    // @Group: SURV_
+    // @Path: ../libraries/AP_AutoSurvey/AP_AutoSurvey.cpp
+    AP_SUBGROUPINFO(auto_survey, "SURV_", 63, ParametersG2, AP_AutoSurvey),
+
     AP_GROUPEND
 };
 

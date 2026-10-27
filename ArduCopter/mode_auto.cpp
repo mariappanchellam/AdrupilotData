@@ -892,6 +892,9 @@ bool ModeAuto::start_command(const AP_Mission::Mission_Command& cmd)
 // exit_mission - function that is called once the mission completes
 void ModeAuto::exit_mission()
 {
+    // notify AP_AutoSurvey of mission completion so it can schedule the next run
+    copter.g2.auto_survey.on_mission_complete();
+
     // play a tone
     AP_Notify::events.mission_complete = 1;
     // if we are not on the ground switch to loiter or land
