@@ -140,17 +140,6 @@ bool AP_AutoSurvey::build_mission()
 
     AP_Mission::Mission_Command cmd {};
 
-    // ── WP 0: home placeholder ────────────────────────────────
-    cmd.id = MAV_CMD_NAV_WAYPOINT;
-    cmd.content.location.lat = (int32_t)(clat * 1.0e7f);
-    cmd.content.location.lng = (int32_t)(clon * 1.0e7f);
-    cmd.content.location.alt = 0;
-    cmd.content.location.relative_alt = 0;
-    if (!mission->add_cmd(cmd)) {
-        send_text(MAV_SEVERITY_ERROR, "add_cmd failed (home)");
-        return false;
-    }
-
     // ── WP 1: takeoff ─────────────────────────────────────────
     cmd.id    = MAV_CMD_NAV_TAKEOFF;
     cmd.p1    = 15;               // minimum pitch (deg)
