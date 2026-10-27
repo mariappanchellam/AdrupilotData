@@ -742,8 +742,18 @@ void Copter::twentyfive_hz_logging()
 void Copter::update_auto_survey()
 {
     if (g2.auto_survey.wants_auto_mode()) {
+        // Arm motors first if not already armed
+        if (!motors->armed()) {
+            arming.arm(AP_Arming::Method::SCRIPTING);
+            return;
+        }
         if (set_mode(Mode::Number::AUTO, ModeReason::SCRIPTING)) {
             g2.auto_survey.on_mode_changed(3);
+            // Start from item 1 (TAKEOFF), skipping the implicit home item 0
+            AP_Mission *ms = AP_Mission::get_singleton();
+            if (ms != nullptr) {
+                ms->set_current_cmd(1);
+            }
         }
     }
     if (g2.auto_survey.wants_rtl_mode()) {
