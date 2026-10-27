@@ -742,6 +742,13 @@ void Copter::twentyfive_hz_logging()
 void Copter::update_auto_survey()
 {
     if (g2.auto_survey.wants_auto_mode()) {
+        // Verify mission is still intact before arming (RC switches can clear it).
+        AP_Mission *ms = AP_Mission::get_singleton();
+        if (ms == nullptr || ms->num_commands() < 2) {
+            // Mission was wiped between BUILD and now — rebuild without arming.
+            g2.auto_survey.on_auto_mode_failed();
+            return;
+        }
         // Arm motors first if not already armed
         if (!motors->armed()) {
             arming.arm(AP_Arming::Method::SCRIPTING);
@@ -750,13 +757,11 @@ void Copter::update_auto_survey()
         if (set_mode(Mode::Number::AUTO, ModeReason::SCRIPTING)) {
             g2.auto_survey.on_mode_changed(3);
             // Start from item 1 (TAKEOFF), skipping the implicit home item 0
-            AP_Mission *ms = AP_Mission::get_singleton();
             if (ms != nullptr) {
                 ms->set_current_cmd(1);
             }
         } else {
-            // Mode switch failed (e.g. mission cleared by RC switch).
-            // Disarm and signal AutoSurvey to rebuild the mission.
+            // Mode switch failed despite valid mission (should be rare).
             arming.disarm(AP_Arming::Method::SCRIPTING);
             g2.auto_survey.on_auto_mode_failed();
         }

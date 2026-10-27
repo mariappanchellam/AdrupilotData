@@ -237,9 +237,9 @@ void AP_AutoSurvey::update()
             _state = State::IDLE;
             break;
         }
-        // request AUTO mode from vehicle main loop
-        _want_auto = true;
-        _state     = State::FLY;
+        _fail_count = 0;   // mission successfully built; reset failure counter
+        _want_auto  = true;
+        _state      = State::FLY;
         break;
     }
 
@@ -270,11 +270,20 @@ void AP_AutoSurvey::update()
 void AP_AutoSurvey::on_auto_mode_failed()
 {
     // AUTO mode entry failed (e.g. mission was cleared by an RC switch).
-    // Clear the request flag and go back to BUILD so the mission is
-    // rebuilt on the next update() cycle.
     _want_auto = false;
-    _state     = State::BUILD;
-    send_text(MAV_SEVERITY_WARNING, "AUTO failed — rebuilding mission");
+    _fail_count++;
+    if (_fail_count >= 5) {
+        // Repeated failures — likely an RC switch keeps clearing the mission.
+        _enable.set_and_save(0);
+        _fail_count = 0;
+        _state = State::IDLE;
+        send_text(MAV_SEVERITY_CRITICAL,
+                  "Survey disabled: mission cleared 5x. "
+                  "Run: param set RC7_OPTION 0 then re-enable");
+        return;
+    }
+    _state = State::BUILD;
+    send_text(MAV_SEVERITY_WARNING, "AUTO failed (%u/5) — rebuilding", (unsigned)_fail_count);
 }
 
 void AP_AutoSurvey::on_mode_changed(uint8_t new_mode)
