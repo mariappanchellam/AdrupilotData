@@ -754,14 +754,13 @@ void Copter::update_auto_survey()
             arming.arm(AP_Arming::Method::SCRIPTING);
             return;
         }
+        // Position the mission at item 1 (TAKEOFF) BEFORE switching to AUTO so
+        // that ModeAuto::init()'s starts_with_takeoff_cmd() check finds it.
+        // (starts_with_takeoff_cmd uses _nav_cmd.index when MIS_RESTART=0)
+        ms->set_current_cmd(1);
         if (set_mode(Mode::Number::AUTO, ModeReason::SCRIPTING)) {
             g2.auto_survey.on_mode_changed(3);
-            // Start from item 1 (TAKEOFF), skipping the implicit home item 0
-            if (ms != nullptr) {
-                ms->set_current_cmd(1);
-            }
         } else {
-            // Mode switch failed despite valid mission (should be rare).
             arming.disarm(AP_Arming::Method::SCRIPTING);
             g2.auto_survey.on_auto_mode_failed();
         }
