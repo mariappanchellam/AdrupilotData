@@ -742,28 +742,27 @@ void Copter::twentyfive_hz_logging()
 void Copter::update_auto_survey()
 {
     if (g2.auto_survey.wants_auto_mode()) {
-        // Verify mission is still intact before arming (RC switches can clear it).
         AP_Mission *ms = AP_Mission::get_singleton();
         if (ms == nullptr || ms->num_commands() < 2) {
-            // Mission was wiped between BUILD and now — rebuild without arming.
             g2.auto_survey.on_auto_mode_failed();
             return;
         }
-        // Arm motors first if not already armed
+        // Enter AUTO mode first while DISARMED. ModeAuto::init() only checks
+        // starts_with_takeoff_cmd() when motors->armed() && land_complete.
+        // Switching before arming bypasses that check; the waiting_to_start
+        // loop in mode_auto.cpp starts the mission once we arm.
+        if (flightmode->mode_number() != Mode::Number::AUTO) {
+            ms->set_current_cmd(1);
+            if (!set_mode(Mode::Number::AUTO, ModeReason::SCRIPTING)) {
+                g2.auto_survey.on_auto_mode_failed();
+            }
+            return;
+        }
         if (!motors->armed()) {
             arming.arm(AP_Arming::Method::SCRIPTING);
             return;
         }
-        // Position the mission at item 1 (TAKEOFF) BEFORE switching to AUTO so
-        // that ModeAuto::init()'s starts_with_takeoff_cmd() check finds it.
-        // (starts_with_takeoff_cmd uses _nav_cmd.index when MIS_RESTART=0)
-        ms->set_current_cmd(1);
-        if (set_mode(Mode::Number::AUTO, ModeReason::SCRIPTING)) {
-            g2.auto_survey.on_mode_changed(3);
-        } else {
-            arming.disarm(AP_Arming::Method::SCRIPTING);
-            g2.auto_survey.on_auto_mode_failed();
-        }
+        g2.auto_survey.on_mode_changed(3);
     }
     if (g2.auto_survey.wants_rtl_mode()) {
         if (set_mode(Mode::Number::RTL, ModeReason::SCRIPTING)) {
