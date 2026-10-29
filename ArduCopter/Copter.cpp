@@ -760,6 +760,7 @@ void Copter::update_auto_survey()
         }
         if (!motors->armed()) {
             arming.arm(AP_Arming::Method::SCRIPTING);
+            set_auto_armed(true);  // allow AUTO takeoff without raising RC throttle
             return;
         }
         g2.auto_survey.on_mode_changed(3);

@@ -250,8 +250,8 @@ void AP_AutoSurvey::update()
             AP_Param::set_by_name("RC7_OPTION", 0);
             // Force starts_with_takeoff_cmd() to always check from index 1.
             AP_Param::set_by_name("MIS_RESTART", 1);
-            // Allow arming while already in AUTO mode (bit 0).
-            AP_Param::set_by_name("AUTO_OPTIONS", 1);
+            // bit0=AllowArming, bit1=AllowTakeOffWithoutRaisingThrottle (both needed).
+            AP_Param::set_by_name("AUTO_OPTIONS", 3);
             send_text(MAV_SEVERITY_INFO, "Survey cycle triggered");
             _state = State::BUILD;
         }
