@@ -140,7 +140,21 @@ bool AP_AutoSurvey::build_mission()
 
     AP_Mission::Mission_Command cmd {};
 
-    // ── WP 1: takeoff ─────────────────────────────────────────
+    // ── Index 0: home placeholder ─────────────────────────────
+    // starts_with_takeoff_cmd() checks from AP_MISSION_FIRST_REAL_COMMAND (1).
+    // Occupy index 0 so TAKEOFF lands at index 1.
+    cmd.id = MAV_CMD_NAV_WAYPOINT;
+    cmd.content.location.lat = (int32_t)(clat * 1.0e7f);
+    cmd.content.location.lng = (int32_t)(clon * 1.0e7f);
+    cmd.content.location.alt = (int32_t)(alt_m * 100.0f);
+    cmd.content.location.relative_alt = 1;
+    if (!mission->add_cmd(cmd)) {
+        send_text(MAV_SEVERITY_ERROR, "add_cmd failed (home)");
+        return false;
+    }
+    cmd = {};
+
+    // ── Index 1: takeoff ──────────────────────────────────────
     cmd.id    = MAV_CMD_NAV_TAKEOFF;
     cmd.p1    = 15;               // minimum pitch (deg)
     cmd.content.location.lat = (int32_t)(clat * 1.0e7f);
@@ -225,6 +239,10 @@ void AP_AutoSurvey::update()
 
     case State::IDLE:
         if (rising) {
+            // Prevent RC7 SaveWaypoint from clearing the survey mission.
+            AP_Param::set_by_name("RC7_OPTION", 0);
+            // Force starts_with_takeoff_cmd() to always check from index 1.
+            AP_Param::set_by_name("MIS_RESTART", 1);
             send_text(MAV_SEVERITY_INFO, "Survey cycle triggered");
             _state = State::BUILD;
         }
