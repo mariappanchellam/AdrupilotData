@@ -222,6 +222,13 @@ void AP_AutoSurvey::update()
     const uint32_t now_ms   = AP_HAL::millis();
     const int8_t   enabled  = _enable.get();
 
+    // Suppress rising-edge detection for 45 s after boot so the EKF can
+    // initialise before we attempt to arm and enter AUTO mode.
+    if (now_ms < 45000U) {
+        _prev_enable = enabled;
+        return;
+    }
+
     // detect rising edge 0→1
     const bool rising = (enabled > 0) && (_prev_enable == 0);
     _prev_enable = enabled;
