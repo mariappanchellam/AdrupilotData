@@ -751,8 +751,10 @@ void Copter::update_auto_survey()
         // starts_with_takeoff_cmd() when motors->armed() && land_complete.
         // Switching before arming bypasses that check; the waiting_to_start
         // loop in mode_auto.cpp starts the mission once we arm.
+        // Do NOT call set_current_cmd() here: it sets nav_cmd_loaded=true which
+        // causes resume() to skip do_takeoff(), so auto_takeoff.alt_target_m
+        // is never set and verify_takeoff() returns true immediately.
         if (flightmode->mode_number() != Mode::Number::AUTO) {
-            ms->set_current_cmd(1);
             if (!set_mode(Mode::Number::AUTO, ModeReason::SCRIPTING)) {
                 g2.auto_survey.on_auto_mode_failed();
             }
