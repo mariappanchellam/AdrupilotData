@@ -812,6 +812,7 @@ bool AP_Arming_Copter::disarm(const AP_Arming::Method method, bool do_disarm_che
 
 #if CONFIG_HAL_BOARD == HAL_BOARD_SITL
     send_arm_disarm_statustext("Disarming motors");
+    GCS_SEND_TEXT(MAV_SEVERITY_WARNING, "AP: Disarm reason: %d", (int)method);
 #endif
 
     // we are not in the air

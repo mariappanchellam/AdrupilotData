@@ -895,6 +895,10 @@ void ModeAuto::exit_mission()
     // notify AP_AutoSurvey of mission completion so it can schedule the next run
     copter.g2.auto_survey.on_mission_complete();
 
+#if CONFIG_HAL_BOARD == HAL_BOARD_SITL
+    GCS_SEND_TEXT(MAV_SEVERITY_WARNING, "AP: exit_mission land_complete=%d", (int)copter.ap.land_complete);
+#endif
+
     // play a tone
     AP_Notify::events.mission_complete = 1;
     // if we are not on the ground switch to loiter or land
