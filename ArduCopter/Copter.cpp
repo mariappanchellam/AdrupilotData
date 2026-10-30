@@ -761,8 +761,13 @@ void Copter::update_auto_survey()
             return;
         }
         if (!motors->armed()) {
+            // set_auto_armed BEFORE arming: events.cpp should_disarm_on_failsafe()
+            // returns true unconditionally while ap.in_arming_delay is set (which
+            // arm() sets at its very end).  With auto_armed=true the AUTO-mode branch
+            // evaluates to !true && land_complete = false, so no failsafe disarm
+            // fires during the 2-second arming delay.
+            set_auto_armed(true);
             arming.arm(AP_Arming::Method::SCRIPTING);
-            set_auto_armed(true);  // allow AUTO takeoff without raising RC throttle
             return;
         }
         g2.auto_survey.on_mode_changed(3);
