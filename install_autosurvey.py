@@ -277,19 +277,10 @@ bool AP_AutoSurvey::build_mission()
 
     AP_Mission::Mission_Command cmd {};
 
-    // Index 0: home placeholder (starts_with_takeoff_cmd checks from index 1)
-    cmd.id = MAV_CMD_NAV_WAYPOINT;
-    cmd.content.location.lat = (int32_t)(clat * 1.0e7f);
-    cmd.content.location.lng = (int32_t)(clon * 1.0e7f);
-    cmd.content.location.alt = (int32_t)(alt_m * 100.0f);
-    cmd.content.location.relative_alt = 1;
-    if (!mission->add_cmd(cmd)) {
-        send_text(MAV_SEVERITY_ERROR, "add_cmd failed (home)");
-        return false;
-    }
-    cmd = {};
-
-    // Index 1: TAKEOFF
+    // Index 1 (AP_MISSION_FIRST_REAL_COMMAND): TAKEOFF
+    // add_cmd() auto-inserts HOME at index 0 on the first call, so the
+    // first explicit add_cmd() lands at index 1 — exactly where
+    // starts_with_takeoff_cmd() and mission.start() expect it.
     cmd.id    = MAV_CMD_NAV_TAKEOFF;
     cmd.p1    = 15;
     cmd.content.location.lat = (int32_t)(clat * 1.0e7f);
