@@ -49,6 +49,25 @@ def patch(path, old, new, label):
         f.write(text.replace(old, new, 1))
     print(f"  OK    {label}")
 
+
+def patch_try_list(path, skip_fragment, anchors, label):
+    """Try each (old, new) pair in order; SKIP if skip_fragment already in file."""
+    full = check(path)
+    with open(full) as f:
+        text = f.read()
+    if skip_fragment in text:
+        print(f"  SKIP  {label} (already applied)")
+        return
+    for old, new in anchors:
+        if old in text:
+            with open(full, "w") as f:
+                f.write(text.replace(old, new, 1))
+            print(f"  OK    {label}")
+            return
+    print(f"  MISS  {label} — no known anchor found in {path}")
+    print(f"        Tried {len(anchors)} anchor variant(s)")
+
+
 # ── 1. AP_AutoSurvey library files ───────────────────────────────────────────
 
 print("\n[1] Writing AP_AutoSurvey library files …")
@@ -469,11 +488,24 @@ patch(
     "add AP_AutoSurvey include",
 )
 
-# Find where to insert the member — look for AP_OAPathPlanner member
-patch(
+# Find where to insert the member — try several #endif forms around AP_OAPathPlanner
+patch_try_list(
     "ArduCopter/Parameters.h",
-    '    AP_OAPathPlanner oa;\n#endif\n',
-    '    AP_OAPathPlanner oa;\n#endif\n\n    // autonomous timed factory surveillance\n    AP_AutoSurvey auto_survey;\n',
+    "AP_AutoSurvey auto_survey;",
+    [
+        (
+            '    AP_OAPathPlanner oa;\n#endif\n',
+            '    AP_OAPathPlanner oa;\n#endif\n\n    // autonomous timed factory surveillance\n    AP_AutoSurvey auto_survey;\n',
+        ),
+        (
+            '    AP_OAPathPlanner oa;\n#endif  // AP_OAPATHPLANNER_ENABLED\n',
+            '    AP_OAPathPlanner oa;\n#endif  // AP_OAPATHPLANNER_ENABLED\n\n    // autonomous timed factory surveillance\n    AP_AutoSurvey auto_survey;\n',
+        ),
+        (
+            '    AP_OAPathPlanner oa;\n#endif // AP_OAPATHPLANNER_ENABLED\n',
+            '    AP_OAPathPlanner oa;\n#endif // AP_OAPATHPLANNER_ENABLED\n\n    // autonomous timed factory surveillance\n    AP_AutoSurvey auto_survey;\n',
+        ),
+    ],
     "add AP_AutoSurvey member variable",
 )
 
@@ -481,10 +513,19 @@ patch(
 
 print("\n[3] Patching ArduCopter/Parameters.cpp …")
 
-patch(
+patch_try_list(
     "ArduCopter/Parameters.cpp",
-    '    // ID 62 is reserved for the SHOW_... parameters from the Skybrush fork at\n    // https://github.com/skybrush-io/ardupilot\n\n    AP_GROUPEND\n};\n',
-    '    // ID 62 is reserved for the SHOW_... parameters from the Skybrush fork at\n    // https://github.com/skybrush-io/ardupilot\n\n    // @Group: SURV_\n    // @Path: ../libraries/AP_AutoSurvey/AP_AutoSurvey.cpp\n    AP_SUBGROUPINFO(auto_survey, "SURV_", 63, ParametersG2, AP_AutoSurvey),\n\n    AP_GROUPEND\n};\n',
+    'AP_SUBGROUPINFO(auto_survey, "SURV_"',
+    [
+        (
+            '    // ID 62 is reserved for the SHOW_... parameters from the Skybrush fork at\n    // https://github.com/skybrush-io/ardupilot\n\n    AP_GROUPEND\n};\n',
+            '    // ID 62 is reserved for the SHOW_... parameters from the Skybrush fork at\n    // https://github.com/skybrush-io/ardupilot\n\n    // @Group: SURV_\n    // @Path: ../libraries/AP_AutoSurvey/AP_AutoSurvey.cpp\n    AP_SUBGROUPINFO(auto_survey, "SURV_", 63, ParametersG2, AP_AutoSurvey),\n\n    AP_GROUPEND\n};\n',
+        ),
+        (
+            '    AP_SUBGROUPEXTENSION("", 61, ParametersG2, var_info2),\n\n    AP_GROUPEND\n};\n',
+            '    AP_SUBGROUPEXTENSION("", 61, ParametersG2, var_info2),\n\n    // @Group: SURV_\n    // @Path: ../libraries/AP_AutoSurvey/AP_AutoSurvey.cpp\n    AP_SUBGROUPINFO(auto_survey, "SURV_", 63, ParametersG2, AP_AutoSurvey),\n\n    AP_GROUPEND\n};\n',
+        ),
+    ],
     "add SURV_ parameter group",
 )
 
@@ -583,10 +624,19 @@ void Copter::three_hz_loop()
 if 'update_auto_survey();' in read("ArduCopter/Copter.cpp"):
     print("  SKIP  call update_auto_survey() in three_hz_loop (already applied)")
 else:
-    patch(
+    patch_try_list(
         "ArduCopter/Copter.cpp",
-        '    failsafe_gcs_check();\n\n    // check if we\'ve lost terrain data',
-        '    failsafe_gcs_check();\n\n    // execute any mode changes requested by AP_AutoSurvey\n    update_auto_survey();\n\n    // check if we\'ve lost terrain data',
+        "update_auto_survey();",
+        [
+            (
+                '    failsafe_gcs_check();\n\n    // check if we\'ve lost terrain data',
+                '    failsafe_gcs_check();\n\n    // execute any mode changes requested by AP_AutoSurvey\n    update_auto_survey();\n\n    // check if we\'ve lost terrain data',
+            ),
+            (
+                '    failsafe_gcs_check();\n    // check if we\'ve lost terrain data',
+                '    failsafe_gcs_check();\n\n    // execute any mode changes requested by AP_AutoSurvey\n    update_auto_survey();\n\n    // check if we\'ve lost terrain data',
+            ),
+        ],
         "call update_auto_survey() in three_hz_loop",
     )
 
