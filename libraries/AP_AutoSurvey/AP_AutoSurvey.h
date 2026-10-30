@@ -58,7 +58,8 @@ private:
     int8_t   _prev_enable = 0;
     bool     _want_auto   = false;
     bool     _want_rtl    = false;
-    uint8_t  _fail_count  = 0;     // consecutive AUTO failures; disables at limit
+    uint8_t  _fail_count   = 0;     // consecutive AUTO failures; disables at limit
+    bool     _fly_was_armed = false; // tracks arm→disarm transition in FLY state
 
     // ── copter mode numbers ───────────────────────────────────
     static constexpr uint8_t COPTER_MODE_AUTO = 3;

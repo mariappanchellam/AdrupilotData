@@ -273,6 +273,14 @@ void AP_AutoSurvey::update()
     case State::FLY: {
         // _want_auto is cleared by on_mode_changed() once Copter switches
         // mission complete is notified by on_mission_complete()
+        // detect unexpected disarm while the mission should be running
+        if (_fly_was_armed && !hal.util->get_soft_armed()) {
+            GCS_SEND_TEXT(MAV_SEVERITY_WARNING,
+                          "AutoSurvey: disarmed unexpectedly in FLY state");
+            _fly_was_armed = false;
+        } else if (hal.util->get_soft_armed()) {
+            _fly_was_armed = true;
+        }
         break;
     }
 

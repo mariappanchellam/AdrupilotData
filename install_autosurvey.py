@@ -107,6 +107,7 @@ private:
     bool     _want_rtl     {false};
     uint32_t _next_run_ms  {0};
     uint8_t  _fail_count   {0};
+    bool     _fly_was_armed {false};
 
     bool build_mission();
     void send_text(MAV_SEVERITY sev, const char *fmt, ...) const;
@@ -377,6 +378,14 @@ void AP_AutoSurvey::update()
     }
 
     case State::FLY:
+        // detect unexpected disarm while the mission should be running
+        if (_fly_was_armed && !hal.util->get_soft_armed()) {
+            GCS_SEND_TEXT(MAV_SEVERITY_WARNING,
+                          "AutoSurvey: disarmed unexpectedly in FLY state");
+            _fly_was_armed = false;
+        } else if (hal.util->get_soft_armed()) {
+            _fly_was_armed = true;
+        }
         break;
 
     case State::WAIT: {
@@ -569,12 +578,17 @@ void Copter::three_hz_loop()
 )
 
 # 6c: call update_auto_survey() from three_hz_loop
-patch(
-    "ArduCopter/Copter.cpp",
-    '    failsafe_gcs_check();\n\n    // check if we\'ve lost terrain data',
-    '    failsafe_gcs_check();\n\n    // execute any mode changes requested by AP_AutoSurvey\n    update_auto_survey();\n\n    // check if we\'ve lost terrain data',
-    "call update_auto_survey() in three_hz_loop",
-)
+# A previous session may have applied this with slightly different whitespace, so check
+# for the semicoloned call (distinct from the definition, which has no semicolon).
+if 'update_auto_survey();' in read("ArduCopter/Copter.cpp"):
+    print("  SKIP  call update_auto_survey() in three_hz_loop (already applied)")
+else:
+    patch(
+        "ArduCopter/Copter.cpp",
+        '    failsafe_gcs_check();\n\n    // check if we\'ve lost terrain data',
+        '    failsafe_gcs_check();\n\n    // execute any mode changes requested by AP_AutoSurvey\n    update_auto_survey();\n\n    // check if we\'ve lost terrain data',
+        "call update_auto_survey() in three_hz_loop",
+    )
 
 # ── 7. ArduCopter/events.cpp — arming-delay failsafe fix ─────────────────────
 
@@ -616,17 +630,41 @@ patch(
 )
 
 # ── 9. AP_Arming_Copter.cpp — disarm reason diagnostic ───────────────────────
-# The upstream file already has send_arm_disarm_statustext inside the SITL guard;
-# we add GCS_SEND_TEXT alongside it.
+# Anchor on "// we are not in the air" + set_land_complete, which is stable
+# across ArduPilot versions.  A separate SKIP check lets any previous placement
+# of the diagnostic (e.g. inside the send_arm_disarm_statustext SITL guard) be
+# recognised as already applied.
 
 print("\n[9] Patching ArduCopter/AP_Arming_Copter.cpp …")
 
-patch(
-    "ArduCopter/AP_Arming_Copter.cpp",
-    '#if CONFIG_HAL_BOARD == HAL_BOARD_SITL\n    send_arm_disarm_statustext("Disarming motors");\n#endif\n\n    // we are not in the air\n',
-    '#if CONFIG_HAL_BOARD == HAL_BOARD_SITL\n    send_arm_disarm_statustext("Disarming motors");\n    GCS_SEND_TEXT(MAV_SEVERITY_WARNING, "AP: Disarm reason: %d", (int)method);\n#endif\n\n    // we are not in the air\n',
-    "add disarm-reason diagnostic (SITL only)",
-)
+if '"AP: Disarm reason:' in read("ArduCopter/AP_Arming_Copter.cpp"):
+    print("  SKIP  add disarm-reason diagnostic (already applied)")
+else:
+    patch(
+        "ArduCopter/AP_Arming_Copter.cpp",
+        '    // we are not in the air\n    copter.set_land_complete(true);\n',
+        '    // we are not in the air\n#if CONFIG_HAL_BOARD == HAL_BOARD_SITL\n    GCS_SEND_TEXT(MAV_SEVERITY_WARNING, "AP: Disarm reason: %d", (int)method);\n#endif\n    copter.set_land_complete(true);\n',
+        "add disarm-reason diagnostic (SITL only)",
+    )
+
+# ── verify ───────────────────────────────────────────────────────────────────
+
+print("\n[VERIFY] Key patches in ~/ardupilot/ …")
+_verify_checks = [
+    ("ArduCopter/Copter.cpp",              "update_auto_survey();",        "update_auto_survey() called in loop"),
+    ("ArduCopter/events.cpp",              "!ap.auto_armed",               "Layer 1 fix in events.cpp"),
+    ("ArduCopter/AP_Arming_Copter.cpp",    '"AP: Disarm reason:',          "disarm-reason diagnostic"),
+    ("ArduCopter/mode_auto.cpp",           "on_mission_complete()",        "on_mission_complete() call"),
+    ("ArduCopter/mode_auto.cpp",           "exit_mission land_complete",   "exit_mission diagnostic"),
+    ("libraries/AP_AutoSurvey/AP_AutoSurvey.cpp", "disarmed unexpectedly", "AutoSurvey FLY disarm monitor"),
+]
+for _vpath, _vneedle, _vlabel in _verify_checks:
+    _vfull = os.path.join(ARDUPILOT, _vpath)
+    try:
+        _vstatus = "OK  " if _vneedle in open(_vfull).read() else "MISS"
+    except FileNotFoundError:
+        _vstatus = "ERR "
+    print(f"  {_vstatus}  {_vlabel}")
 
 # ── summary ──────────────────────────────────────────────────────────────────
 
