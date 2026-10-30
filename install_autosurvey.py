@@ -616,13 +616,15 @@ patch(
 )
 
 # ── 9. AP_Arming_Copter.cpp — disarm reason diagnostic ───────────────────────
+# The upstream file already has send_arm_disarm_statustext inside the SITL guard;
+# we add GCS_SEND_TEXT alongside it.
 
 print("\n[9] Patching ArduCopter/AP_Arming_Copter.cpp …")
 
 patch(
     "ArduCopter/AP_Arming_Copter.cpp",
-    '    if (!AP_Arming::disarm(method, do_disarm_checks)) {\n        return false;\n    }\n\n    // we are not in the air\n',
-    '    if (!AP_Arming::disarm(method, do_disarm_checks)) {\n        return false;\n    }\n\n#if CONFIG_HAL_BOARD == HAL_BOARD_SITL\n    send_arm_disarm_statustext("Disarming motors");\n    GCS_SEND_TEXT(MAV_SEVERITY_WARNING, "AP: Disarm reason: %d", (int)method);\n#endif\n\n    // we are not in the air\n',
+    '#if CONFIG_HAL_BOARD == HAL_BOARD_SITL\n    send_arm_disarm_statustext("Disarming motors");\n#endif\n\n    // we are not in the air\n',
+    '#if CONFIG_HAL_BOARD == HAL_BOARD_SITL\n    send_arm_disarm_statustext("Disarming motors");\n    GCS_SEND_TEXT(MAV_SEVERITY_WARNING, "AP: Disarm reason: %d", (int)method);\n#endif\n\n    // we are not in the air\n',
     "add disarm-reason diagnostic (SITL only)",
 )
 
