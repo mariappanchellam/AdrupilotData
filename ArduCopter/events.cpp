@@ -462,7 +462,12 @@ void Copter::set_mode_brake_or_land_with_pause(ModeReason reason)
 
 bool Copter::should_disarm_on_failsafe() {
     if (ap.in_arming_delay) {
-        return true;
+        // AUTO mode with auto_armed set means a scripted takeoff is in progress;
+        // fall through to the AUTO-mode check so the arming delay does not cause
+        // an immediate disarm before the takeoff sequence has a chance to run.
+        if (flightmode->mode_number() != Mode::Number::AUTO || !ap.auto_armed) {
+            return true;
+        }
     }
 
     switch (flightmode->mode_number()) {
