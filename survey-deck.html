@@ -1,0 +1,638 @@
+<title>AP_AutoSurvey System Deck</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Inter:wght@400;500;600;700&display=swap">
+<style>
+:root {
+  --bg:#080c18; --bg2:#0f1628; --bg3:#1a2236;
+  --fg:#e2e8f0; --fg2:#8899aa; --fg3:#4a5568;
+  --accent:#00d4ff; --amber:#f59e0b; --blue:#4080ff;
+  --green:#22c55e; --red:#ef4444; --purple:#a855f7;
+  --border:rgba(255,255,255,.08);
+  color-scheme:dark;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden}
+body{
+  background:var(--bg);color:var(--fg);
+  font-family:'Inter',system-ui,sans-serif;
+  display:flex;flex-direction:column;
+  padding-left:max(16px,env(safe-area-inset-left,0px));
+  padding-right:max(16px,env(safe-area-inset-right,0px));
+  padding-block:0;
+}
+
+/* deck chrome */
+#chrome{
+  flex-shrink:0;display:flex;align-items:center;
+  padding:8px 0;border-bottom:1px solid var(--border);gap:10px;
+}
+.badge{
+  background:var(--accent);color:#000;
+  font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:600;
+  padding:2px 7px;border-radius:2px;letter-spacing:.08em;text-transform:uppercase;
+}
+#deck-title{font-size:12px;color:var(--fg2);font-family:'JetBrains Mono',monospace;}
+#nav-info{margin-left:auto;font-size:11px;color:var(--fg3);font-family:'JetBrains Mono',monospace;}
+#prev-btn,#next-btn{
+  background:var(--bg3);border:1px solid var(--border);color:var(--fg);
+  border-radius:4px;padding:4px 10px;cursor:pointer;font-size:12px;
+  transition:background .15s;
+}
+#prev-btn:hover,#next-btn:hover{background:var(--bg2);}
+
+/* slide area */
+#deck{flex:1;position:relative;overflow:hidden;min-height:0;}
+.slide{
+  position:absolute;inset:0;overflow-y:auto;
+  display:flex;flex-direction:column;
+  padding:24px 0 16px;gap:16px;
+  transition:transform .35s cubic-bezier(.4,0,.2,1),opacity .35s;
+}
+.slide.hidden-left{transform:translateX(-100%);opacity:0;pointer-events:none;}
+.slide.hidden-right{transform:translateX(100%);opacity:0;pointer-events:none;}
+
+/* dots */
+#dots{
+  flex-shrink:0;display:flex;justify-content:center;align-items:center;
+  gap:6px;padding:6px 0;border-top:1px solid var(--border);
+}
+.dot{
+  width:6px;height:6px;border-radius:50%;
+  background:var(--fg3);cursor:pointer;transition:background .2s,transform .2s;
+}
+.dot.active{background:var(--accent);transform:scale(1.4);}
+
+/* common slide typography */
+.slide-tag{
+  font-size:9px;color:var(--accent);font-family:'JetBrains Mono',monospace;
+  text-transform:uppercase;letter-spacing:.1em;
+}
+h1.slide-h{font-size:clamp(20px,4vw,32px);font-weight:700;line-height:1.15;letter-spacing:-.02em;}
+h2.slide-h{font-size:clamp(16px,3vw,22px);font-weight:600;letter-spacing:-.015em;margin-bottom:4px;}
+.slide-sub{font-size:13px;color:var(--fg2);line-height:1.6;}
+
+/* ── Slide 1 — cover ── */
+#s1{justify-content:center;gap:20px;}
+.cover-badges{display:flex;gap:8px;flex-wrap:wrap;}
+.cover-coords{
+  display:flex;gap:12px;align-items:center;
+  font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--accent);
+  background:rgba(0,212,255,.07);border:1px solid rgba(0,212,255,.2);
+  border-radius:6px;padding:10px 16px;width:fit-content;
+}
+.cover-coords .sep{color:var(--fg3);}
+.cover-loc{font-size:12px;color:var(--fg2);}
+
+/* ── Slide 2 — params ── */
+.param-table{width:100%;border-collapse:collapse;font-size:12px;}
+.param-table th{
+  text-align:left;padding:6px 10px;
+  font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.08em;
+  text-transform:uppercase;color:var(--fg2);border-bottom:1px solid var(--border);
+}
+.param-table td{padding:7px 10px;border-bottom:1px solid var(--border);}
+.param-table tr:last-child td{border-bottom:none;}
+.param-table td:first-child{
+  font-family:'JetBrains Mono',monospace;color:var(--amber);font-size:11px;
+}
+.val{color:var(--accent) !important;font-family:'JetBrains Mono',monospace;font-weight:600;}
+.unit{color:var(--fg3) !important;font-size:11px;}
+.note-box{
+  background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.25);
+  border-radius:6px;padding:10px 14px;font-size:12px;color:var(--amber);
+}
+
+/* ── Slide 3 — launch timeline ── */
+.timeline{display:flex;flex-direction:column;gap:0;}
+.trow{display:flex;gap:14px;align-items:flex-start;}
+.tline{display:flex;flex-direction:column;align-items:center;flex-shrink:0;}
+.tnum{
+  width:28px;height:28px;border-radius:50%;
+  background:var(--bg3);border:1.5px solid var(--border);
+  display:flex;align-items:center;justify-content:center;
+  font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:600;
+  color:var(--accent);flex-shrink:0;
+}
+.tconn{width:2px;flex:1;min-height:14px;background:var(--border);}
+.tcontent{padding-bottom:14px;}
+.tlbl{font-size:13px;font-weight:600;margin-bottom:2px;}
+.tdesc{font-size:11px;color:var(--fg2);line-height:1.5;}
+.tcoord{
+  font-family:'JetBrains Mono',monospace;font-size:10px;
+  color:var(--accent);background:rgba(0,212,255,.08);
+  border-radius:3px;padding:2px 6px;display:inline-block;margin-top:3px;
+}
+.tnum.hi{background:rgba(0,212,255,.15);border-color:rgba(0,212,255,.4);}
+
+/* ── Slide 4 — architecture SVG ── */
+.arch-wrap{overflow-x:auto;}
+.arch-wrap svg{display:block;width:100%;max-width:700px;height:auto;}
+text{font-family:'Inter',system-ui,sans-serif;}
+
+/* ── Slide 5 — sequence SVG ── */
+.seq-wrap{overflow-x:auto;}
+.seq-wrap svg{display:block;width:100%;min-width:640px;height:auto;}
+
+/* ── Slide 6 — state machine ── */
+.sm-wrap{overflow-x:auto;}
+.sm-wrap svg{display:block;width:100%;max-width:680px;height:auto;}
+.summary-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.sum-card{
+  background:var(--bg2);border:1px solid var(--border);
+  border-radius:6px;padding:12px;
+}
+.sum-label{font-size:9px;color:var(--fg2);text-transform:uppercase;letter-spacing:.08em;font-family:'JetBrains Mono',monospace;margin-bottom:6px;}
+.sum-val{font-family:'JetBrains Mono',monospace;font-size:18px;font-weight:600;color:var(--accent);}
+.sum-unit{font-size:11px;color:var(--fg2);}
+
+@media(max-width:480px){
+  .summary-grid{grid-template-columns:1fr 1fr;}
+  .param-table td,.param-table th{padding:5px 7px;}
+}
+</style>
+
+<!-- chrome -->
+<div id="chrome">
+  <div class="badge">6 slides</div>
+  <span id="deck-title">Dhaksha Factory · AP_AutoSurvey</span>
+  <span id="nav-info">01 / 06</span>
+  <button id="prev-btn">←</button>
+  <button id="next-btn">→</button>
+</div>
+
+<!-- deck -->
+<div id="deck">
+
+<!-- ── S1: cover ─────────────────────────── -->
+<div class="slide" id="s1">
+  <div class="cover-badges">
+    <div class="badge">CUAVv5</div>
+    <div class="badge">ArduCopter 4.6</div>
+    <div class="badge">AP_AutoSurvey</div>
+  </div>
+  <h1 class="slide-h">Dhaksha Factory<br>Autonomous Survey</h1>
+  <p class="slide-sub" style="max-width:480px">System architecture, operation sequence, module interactions, and QGroundControl parameters for the hourly lawnmower survey of Aymiccherry factory.</p>
+  <div class="cover-coords">
+    <span>12.87597° N</span>
+    <span class="sep">·</span>
+    <span>79.86275° E</span>
+    <span class="sep">·</span>
+    <span style="color:var(--fg2)">Factory Centre</span>
+  </div>
+  <p class="cover-loc">Dhaksha Unmanned Systems · Aymiccherry village · Walajahbad, Tamil Nadu</p>
+  <p style="font-size:11px;color:var(--fg3);margin-top:8px">Use ← → arrow keys or buttons to navigate</p>
+</div>
+
+<!-- ── S2: parameters ─────────────────────── -->
+<div class="slide hidden-right" id="s2">
+  <div class="slide-tag">Slide 02 — QGroundControl Setup</div>
+  <h2 class="slide-h">Parameters to Set Before Launch</h2>
+  <p class="slide-sub">Vehicle Setup → Parameters → search "SURV_"</p>
+  <table class="param-table">
+    <thead>
+      <tr>
+        <th>Parameter</th><th>Value</th><th>Unit</th><th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td>SURV_LAT</td><td class="val">12.87597</td><td class="unit">°N</td><td>Factory centre latitude</td></tr>
+      <tr><td>SURV_LON</td><td class="val">79.86275</td><td class="unit">°E</td><td>Factory centre longitude</td></tr>
+      <tr><td>SURV_ALT</td><td class="val">50</td><td class="unit">m AGL</td><td>Survey cruise altitude</td></tr>
+      <tr><td>SURV_WIDTH</td><td class="val">290</td><td class="unit">m</td><td>E–W extent of survey area</td></tr>
+      <tr><td>SURV_LEN</td><td class="val">170</td><td class="unit">m</td><td>N–S extent of survey area</td></tr>
+      <tr><td>SURV_SPACING</td><td class="val">20</td><td class="unit">m</td><td>Distance between lanes</td></tr>
+      <tr><td>SURV_INTERVAL</td><td class="val">60</td><td class="unit">min</td><td>Repeat cycle interval</td></tr>
+      <tr><td style="color:var(--green)!important;font-family:'JetBrains Mono',monospace;font-size:11px">SURV_ENABLE</td><td class="val" style="color:var(--green)!important">1</td><td class="unit">—</td><td><strong style="color:var(--green)">Set LAST</strong> — triggers the survey</td></tr>
+    </tbody>
+  </table>
+  <div class="note-box">⚠️ Set SURV_ENABLE = 1 only after all other parameters are confirmed and GPS has 3D fix. The system suppresses arming for 45 s after boot to let the EKF initialise.</div>
+</div>
+
+<!-- ── S3: launch sequence ────────────────── -->
+<div class="slide hidden-right" id="s3">
+  <div class="slide-tag">Slide 03 — Physical Operation</div>
+  <h2 class="slide-h">From Your Hand to Autonomous Survey</h2>
+  <div class="timeline">
+    <div class="trow">
+      <div class="tline"><div class="tnum hi">1</div><div class="tconn"></div></div>
+      <div class="tcontent">
+        <div class="tlbl">Stand near the factory (50–200 m away)</div>
+        <div class="tdesc">You hold the drone outside the building. Your GPS position becomes ArduPilot HOME (RTL return point). It does NOT need to be exactly at the factory centre.</div>
+      </div>
+    </div>
+    <div class="trow">
+      <div class="tline"><div class="tnum">2</div><div class="tconn"></div></div>
+      <div class="tcontent">
+        <div class="tlbl">QGC shows GPS OK + pre-arm pass</div>
+        <div class="tdesc">Wait for "EKF3 using GPS" and all pre-arm checks green. Minimum 45 s after power-on.</div>
+      </div>
+    </div>
+    <div class="trow">
+      <div class="tline"><div class="tnum">3</div><div class="tconn"></div></div>
+      <div class="tcontent">
+        <div class="tlbl">Set SURV_ENABLE = 1 in QGC</div>
+        <div class="tdesc">AP_AutoSurvey detects the 0→1 rising edge, builds the mission (TAKEOFF → 15 lanes → RTL), then requests AUTO mode.</div>
+      </div>
+    </div>
+    <div class="trow">
+      <div class="tline"><div class="tnum hi">4</div><div class="tconn"></div></div>
+      <div class="tcontent">
+        <div class="tlbl">Drone auto-arms and takes off from your hand</div>
+        <div class="tdesc">TAKEOFF command climbs to 50 m, then flies autonomously toward the factory centre coordinates.</div>
+        <div class="tcoord">TAKEOFF target → 12.87597° N, 79.86275° E @ 50 m</div>
+      </div>
+    </div>
+    <div class="trow">
+      <div class="tline"><div class="tnum">5</div><div class="tconn"></div></div>
+      <div class="tcontent">
+        <div class="tlbl">Lawnmower survey runs (≈ 15–20 min)</div>
+        <div class="tdesc">15 lanes × 290 m wide, 20 m spacing, 33 waypoints total. GCS shows "Mission: WP 2 / 33" counting up.</div>
+      </div>
+    </div>
+    <div class="trow">
+      <div class="tline"><div class="tnum">6</div><div class="tconn"></div></div>
+      <div class="tcontent">
+        <div class="tlbl">RTL — drone returns to YOUR position</div>
+        <div class="tdesc">Returns to HOME (your launch GPS fix, not factory centre). Lands, disarms. You swap battery here.</div>
+      </div>
+    </div>
+    <div class="trow">
+      <div class="tline"><div class="tnum hi">7</div><div class="tconn"></div></div>
+      <div class="tcontent">
+        <div class="tlbl">Wait 60 minutes → cycle repeats automatically</div>
+        <div class="tdesc">AP_AutoSurvey enters WAIT state. After 60 min it rebuilds the mission and auto-arms again. Runs indefinitely while SURV_ENABLE = 1.</div>
+        <div class="tcoord">Set SURV_ENABLE = 0 at any time to abort</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── S4: architecture ───────────────────── -->
+<div class="slide hidden-right" id="s4">
+  <div class="slide-tag">Slide 04 — Software Architecture</div>
+  <h2 class="slide-h">Module Interactions</h2>
+  <div class="arch-wrap">
+    <svg viewBox="0 0 700 420" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="ar" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+          <path d="M0,0 L8,3 L0,6 Z" fill="#8899aa"/>
+        </marker>
+        <marker id="ar-acc" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+          <path d="M0,0 L8,3 L0,6 Z" fill="#00d4ff"/>
+        </marker>
+        <marker id="ar-grn" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+          <path d="M0,0 L8,3 L0,6 Z" fill="#22c55e"/>
+        </marker>
+      </defs>
+
+      <!-- QGC box -->
+      <rect x="1" y="1" width="140" height="54" rx="6" fill="#0f1628" stroke="#f59e0b" stroke-width="1.5"/>
+      <text x="71" y="22" text-anchor="middle" fill="#f59e0b" font-size="11" font-weight="600">QGroundControl</text>
+      <text x="71" y="38" text-anchor="middle" fill="#8899aa" font-size="9">MAVLink · parameters</text>
+      <text x="71" y="51" text-anchor="middle" fill="#8899aa" font-size="9">SURV_* · monitoring</text>
+
+      <!-- Arrow: QGC → AutoSurvey -->
+      <path d="M141,28 L200,28" stroke="#f59e0b" stroke-width="1.5" marker-end="url(#ar)"/>
+      <text x="168" y="23" text-anchor="middle" fill="#f59e0b" font-size="8">SURV_ENABLE</text>
+
+      <!-- ArduCopter outer box -->
+      <rect x="200" y="1" width="498" height="418" rx="8" fill="rgba(15,22,40,0.6)" stroke="#1a2236" stroke-width="1.5"/>
+      <text x="449" y="18" text-anchor="middle" fill="#4a5568" font-size="9" letter-spacing="1">ArduCopter 4.6 (CUAVv5)</text>
+
+      <!-- AP_AutoSurvey -->
+      <rect x="215" y="25" width="155" height="100" rx="6" fill="#0f1628" stroke="#00d4ff" stroke-width="1.5"/>
+      <text x="292" y="44" text-anchor="middle" fill="#00d4ff" font-size="11" font-weight="600">AP_AutoSurvey</text>
+      <text x="292" y="59" text-anchor="middle" fill="#8899aa" font-size="9">State Machine</text>
+      <rect x="225" y="66" width="135" height="15" rx="3" fill="rgba(0,212,255,0.08)"/>
+      <text x="292" y="77" text-anchor="middle" fill="#00d4ff" font-size="8" font-family="'JetBrains Mono',monospace">IDLE→BUILD→FLY→WAIT</text>
+      <text x="292" y="96" text-anchor="middle" fill="#8899aa" font-size="8">build_mission()</text>
+      <text x="292" y="109" text-anchor="middle" fill="#8899aa" font-size="8">on_mission_complete()</text>
+
+      <!-- AP_Mission -->
+      <rect x="420" y="25" width="145" height="100" rx="6" fill="#0f1628" stroke="#4080ff" stroke-width="1.5"/>
+      <text x="492" y="44" text-anchor="middle" fill="#4080ff" font-size="11" font-weight="600">AP_Mission</text>
+      <text x="492" y="60" text-anchor="middle" fill="#8899aa" font-size="9">Waypoint storage + executor</text>
+      <text x="492" y="76" text-anchor="middle" fill="#8899aa" font-size="8">clear() · add_cmd()</text>
+      <text x="492" y="90" text-anchor="middle" fill="#8899aa" font-size="8">start_or_resume()</text>
+      <text x="492" y="104" text-anchor="middle" fill="#8899aa" font-size="8">num_commands() = 33</text>
+
+      <!-- Arrow: AutoSurvey → Mission (build) -->
+      <path d="M370,65 L420,65" stroke="#00d4ff" stroke-width="1.5" marker-end="url(#ar-acc)"/>
+      <text x="395" y="59" text-anchor="middle" fill="#00d4ff" font-size="8">build mission</text>
+
+      <!-- Arrow: Mission → AutoSurvey (callback) -->
+      <path d="M420,90 L370,90" stroke="#22c55e" stroke-width="1" stroke-dasharray="3,3" marker-end="url(#ar-grn)"/>
+      <text x="395" y="104" text-anchor="middle" fill="#22c55e" font-size="8">complete callback</text>
+
+      <!-- Copter.cpp bridge -->
+      <rect x="215" y="160" width="155" height="70" rx="6" fill="#0f1628" stroke="#a855f7" stroke-width="1.5"/>
+      <text x="292" y="179" text-anchor="middle" fill="#a855f7" font-size="11" font-weight="600">Copter bridge</text>
+      <text x="292" y="193" text-anchor="middle" fill="#8899aa" font-size="9">update_auto_survey() 3Hz</text>
+      <text x="292" y="207" text-anchor="middle" fill="#8899aa" font-size="8">arm(SCRIPTING)</text>
+      <text x="292" y="220" text-anchor="middle" fill="#8899aa" font-size="8">set_mode(AUTO)</text>
+
+      <!-- Arrow: AutoSurvey ↔ Copter bridge -->
+      <path d="M292,125 L292,160" stroke="#a855f7" stroke-width="1.5" marker-end="url(#ar)"/>
+      <text x="305" y="146" fill="#a855f7" font-size="8">_want_auto</text>
+
+      <!-- ModeAuto -->
+      <rect x="420" y="160" width="145" height="70" rx="6" fill="#0f1628" stroke="#22c55e" stroke-width="1.5"/>
+      <text x="492" y="179" text-anchor="middle" fill="#22c55e" font-size="11" font-weight="600">ModeAuto</text>
+      <text x="492" y="193" text-anchor="middle" fill="#8899aa" font-size="9">AUTO flight mode</text>
+      <text x="492" y="207" text-anchor="middle" fill="#8899aa" font-size="8">takeoff_run()</text>
+      <text x="492" y="220" text-anchor="middle" fill="#8899aa" font-size="8">wp_run() · do_run()</text>
+
+      <!-- Arrow: Copter → ModeAuto -->
+      <path d="M370,195 L420,195" stroke="#a855f7" stroke-width="1.5" marker-end="url(#ar)"/>
+      <text x="395" y="189" text-anchor="middle" fill="#a855f7" font-size="8">set_mode</text>
+
+      <!-- Arrow: ModeAuto → Mission -->
+      <path d="M492,160 L492,125" stroke="#22c55e" stroke-width="1.5" marker-end="url(#ar-grn)"/>
+      <text x="504" y="146" fill="#22c55e" font-size="8">execute</text>
+
+      <!-- AP_Arming -->
+      <rect x="215" y="270" width="120" height="55" rx="6" fill="#0f1628" stroke="#ef4444" stroke-width="1.5"/>
+      <text x="275" y="289" text-anchor="middle" fill="#ef4444" font-size="10" font-weight="600">AP_Arming</text>
+      <text x="275" y="303" text-anchor="middle" fill="#8899aa" font-size="8">arm(SCRIPTING)</text>
+      <text x="275" y="316" text-anchor="middle" fill="#8899aa" font-size="8">safety checks</text>
+
+      <!-- AP_AHRS / GPS -->
+      <rect x="350" y="270" width="120" height="55" rx="6" fill="#0f1628" stroke="#8899aa" stroke-width="1.5"/>
+      <text x="410" y="289" text-anchor="middle" fill="#e2e8f0" font-size="10" font-weight="600">AP_AHRS / GPS</text>
+      <text x="410" y="303" text-anchor="middle" fill="#8899aa" font-size="8">get_origin()</text>
+      <text x="410" y="316" text-anchor="middle" fill="#8899aa" font-size="8">EKF3 · 3D nav</text>
+
+      <!-- AP_HAL -->
+      <rect x="485" y="270" width="105" height="55" rx="6" fill="#0f1628" stroke="#8899aa" stroke-width="1.5"/>
+      <text x="537" y="289" text-anchor="middle" fill="#e2e8f0" font-size="10" font-weight="600">AP_HAL</text>
+      <text x="537" y="303" text-anchor="middle" fill="#8899aa" font-size="8">CUAVv5 / STM32H7</text>
+      <text x="537" y="316" text-anchor="middle" fill="#8899aa" font-size="8">millis() · I²C · SPI</text>
+
+      <!-- Arrow: Copter → Arming -->
+      <path d="M275,230 L275,270" stroke="#ef4444" stroke-width="1.5" marker-end="url(#ar)"/>
+
+      <!-- Arrow: ModeAuto → AHRS -->
+      <path d="M450,230 L410,270" stroke="#8899aa" stroke-width="1" marker-end="url(#ar)"/>
+
+      <!-- Hardware layer label -->
+      <rect x="215" y="355" width="375" height="55" rx="6" fill="rgba(26,34,54,0.6)" stroke="#1a2236" stroke-width="1"/>
+      <text x="402" y="375" text-anchor="middle" fill="#4a5568" font-size="9" letter-spacing="1">HARDWARE LAYER — CUAVv5 (STM32H7 · ICM42688 · SPL06 · NEO-M8N)</text>
+      <text x="402" y="393" text-anchor="middle" fill="#4a5568" font-size="9">4S LiPo · ESC/motors · telemetry radio · GPS antenna</text>
+    </svg>
+  </div>
+</div>
+
+<!-- ── S5: sequence diagram ──────────────── -->
+<div class="slide hidden-right" id="s5">
+  <div class="slide-tag">Slide 05 — Sequence Diagram</div>
+  <h2 class="slide-h">One Complete Survey Cycle</h2>
+  <div class="seq-wrap">
+    <svg viewBox="0 0 820 560" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="sa" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto">
+          <path d="M0,0 L7,2.5 L0,5 Z" fill="#8899aa"/>
+        </marker>
+        <marker id="sa2" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto">
+          <path d="M0,0 L7,2.5 L0,5 Z" fill="#00d4ff"/>
+        </marker>
+        <marker id="sa3" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto">
+          <path d="M0,0 L7,2.5 L0,5 Z" fill="#22c55e"/>
+        </marker>
+      </defs>
+
+      <!-- actor columns: QGC=70, AutoSurvey=220, Mission=370, Copter=510, ModeAuto=650, FCU=790 -->
+      <!-- actor boxes -->
+      <rect x="10" y="4" width="118" height="36" rx="5" fill="#0f1628" stroke="#f59e0b" stroke-width="1.5"/>
+      <text x="69" y="27" text-anchor="middle" fill="#f59e0b" font-size="10" font-weight="600">QGroundControl</text>
+
+      <rect x="148" y="4" width="136" height="36" rx="5" fill="#0f1628" stroke="#00d4ff" stroke-width="1.5"/>
+      <text x="216" y="27" text-anchor="middle" fill="#00d4ff" font-size="10" font-weight="600">AP_AutoSurvey</text>
+
+      <rect x="298" y="4" width="120" height="36" rx="5" fill="#0f1628" stroke="#4080ff" stroke-width="1.5"/>
+      <text x="358" y="27" text-anchor="middle" fill="#4080ff" font-size="10" font-weight="600">AP_Mission</text>
+
+      <rect x="440" y="4" width="120" height="36" rx="5" fill="#0f1628" stroke="#a855f7" stroke-width="1.5"/>
+      <text x="500" y="27" text-anchor="middle" fill="#a855f7" font-size="10" font-weight="600">Copter bridge</text>
+
+      <rect x="580" y="4" width="110" height="36" rx="5" fill="#0f1628" stroke="#22c55e" stroke-width="1.5"/>
+      <text x="635" y="27" text-anchor="middle" fill="#22c55e" font-size="10" font-weight="600">ModeAuto</text>
+
+      <rect x="714" y="4" width="96" height="36" rx="5" fill="#0f1628" stroke="#8899aa" stroke-width="1.5"/>
+      <text x="762" y="27" text-anchor="middle" fill="#e2e8f0" font-size="10" font-weight="600">FCU</text>
+
+      <!-- lifelines -->
+      <line x1="69" y1="40" x2="69" y2="555" stroke="#f59e0b" stroke-width="1" stroke-dasharray="4,4" opacity="0.35"/>
+      <line x1="216" y1="40" x2="216" y2="555" stroke="#00d4ff" stroke-width="1" stroke-dasharray="4,4" opacity="0.35"/>
+      <line x1="358" y1="40" x2="358" y2="555" stroke="#4080ff" stroke-width="1" stroke-dasharray="4,4" opacity="0.35"/>
+      <line x1="500" y1="40" x2="500" y2="555" stroke="#a855f7" stroke-width="1" stroke-dasharray="4,4" opacity="0.35"/>
+      <line x1="635" y1="40" x2="635" y2="555" stroke="#22c55e" stroke-width="1" stroke-dasharray="4,4" opacity="0.35"/>
+      <line x1="762" y1="40" x2="762" y2="555" stroke="#8899aa" stroke-width="1" stroke-dasharray="4,4" opacity="0.35"/>
+
+      <!-- messages -->
+      <!-- 1: QGC → AutoSurvey: set params -->
+      <line x1="69" y1="68" x2="209" y2="68" stroke="#f59e0b" stroke-width="1.5" marker-end="url(#sa)"/>
+      <text x="140" y="63" text-anchor="middle" fill="#f59e0b" font-size="8">Set SURV_LAT/LON/ALT … ENABLE=1</text>
+
+      <!-- 2: AutoSurvey self: IDLE→BUILD -->
+      <path d="M216,82 Q240,82 240,90 Q240,98 216,98" stroke="#00d4ff" stroke-width="1.5" fill="none" marker-end="url(#sa2)"/>
+      <text x="255" y="93" fill="#00d4ff" font-size="8">IDLE → BUILD</text>
+
+      <!-- 3: AutoSurvey → Mission: clear + add_cmd -->
+      <line x1="216" y1="112" x2="351" y2="112" stroke="#00d4ff" stroke-width="1.5" marker-end="url(#sa2)"/>
+      <text x="284" y="107" text-anchor="middle" fill="#00d4ff" font-size="8">mission.clear()</text>
+      <line x1="216" y1="128" x2="351" y2="128" stroke="#00d4ff" stroke-width="1.5" marker-end="url(#sa2)"/>
+      <text x="284" y="123" text-anchor="middle" fill="#00d4ff" font-size="8">add_cmd(TAKEOFF @ centre)</text>
+      <line x1="216" y1="144" x2="351" y2="144" stroke="#00d4ff" stroke-width="1.5" marker-end="url(#sa2)"/>
+      <text x="284" y="139" text-anchor="middle" fill="#00d4ff" font-size="8">add_cmd(WP×30 lawnmower)</text>
+      <line x1="216" y1="160" x2="351" y2="160" stroke="#00d4ff" stroke-width="1.5" marker-end="url(#sa2)"/>
+      <text x="284" y="155" text-anchor="middle" fill="#00d4ff" font-size="8">add_cmd(RTL)</text>
+
+      <!-- 4: AutoSurvey self: BUILD→FLY + set _want_auto -->
+      <path d="M216,174 Q240,174 240,182 Q240,190 216,190" stroke="#00d4ff" stroke-width="1.5" fill="none" marker-end="url(#sa2)"/>
+      <text x="255" y="185" fill="#00d4ff" font-size="8">BUILD → FLY, _want_auto=true</text>
+
+      <!-- 5: Copter polls AutoSurvey -->
+      <path d="M500,204 L216,204" stroke="#a855f7" stroke-width="1" stroke-dasharray="4,3" marker-end="url(#sa)"/>
+      <text x="360" y="199" text-anchor="middle" fill="#a855f7" font-size="8">update() detects _want_auto</text>
+
+      <!-- 6: Copter arms -->
+      <path d="M500,218 Q524,218 524,226 Q524,234 500,234" stroke="#a855f7" stroke-width="1.5" fill="none" marker-end="url(#sa)"/>
+      <text x="543" y="229" fill="#a855f7" font-size="8">arm(SCRIPTING)</text>
+
+      <!-- 7: Copter sets AUTO mode -->
+      <line x1="500" y1="248" x2="628" y2="248" stroke="#a855f7" stroke-width="1.5" marker-end="url(#sa)"/>
+      <text x="565" y="243" text-anchor="middle" fill="#a855f7" font-size="8">set_mode(AUTO)</text>
+
+      <!-- 8: ModeAuto callback to AutoSurvey -->
+      <path d="M635,262 L216,262" stroke="#22c55e" stroke-width="1" stroke-dasharray="4,3" marker-end="url(#sa3)"/>
+      <text x="425" y="257" text-anchor="middle" fill="#22c55e" font-size="8">on_mode_changed(AUTO) → _want_auto cleared</text>
+
+      <!-- 9: ModeAuto starts mission -->
+      <line x1="635" y1="276" x2="365" y2="276" stroke="#22c55e" stroke-width="1.5" marker-end="url(#sa3)"/>
+      <text x="500" y="271" text-anchor="middle" fill="#22c55e" font-size="8">mission.start_or_resume()</text>
+
+      <!-- 10: ModeAuto TAKEOFF -->
+      <line x1="635" y1="290" x2="755" y2="290" stroke="#22c55e" stroke-width="1.5" marker-end="url(#sa3)"/>
+      <text x="695" y="285" text-anchor="middle" fill="#22c55e" font-size="8">TAKEOFF → fly to centre</text>
+
+      <!-- 11: ModeAuto lawnmower WPs -->
+      <line x1="635" y1="310" x2="755" y2="310" stroke="#22c55e" stroke-width="1.5" marker-end="url(#sa3)"/>
+      <text x="695" y="305" text-anchor="middle" fill="#22c55e" font-size="8">WP 1…30 lawnmower survey</text>
+
+      <!-- 12: ModeAuto RTL -->
+      <line x1="635" y1="330" x2="755" y2="330" stroke="#22c55e" stroke-width="1.5" marker-end="url(#sa3)"/>
+      <text x="695" y="325" text-anchor="middle" fill="#22c55e" font-size="8">RTL → land at HOME</text>
+
+      <!-- 13: Mission → AutoSurvey complete -->
+      <line x1="358" y1="354" x2="223" y2="354" stroke="#4080ff" stroke-width="1.5" marker-end="url(#sa)"/>
+      <text x="290" y="349" text-anchor="middle" fill="#4080ff" font-size="8">on_mission_complete()</text>
+
+      <!-- 14: AutoSurvey self: FLY→WAIT -->
+      <path d="M216,368 Q240,368 240,376 Q240,384 216,384" stroke="#00d4ff" stroke-width="1.5" fill="none" marker-end="url(#sa2)"/>
+      <text x="255" y="379" fill="#00d4ff" font-size="8">FLY → WAIT (60 min)</text>
+
+      <!-- 15: After 60 min loop -->
+      <path d="M216,400 Q240,400 240,408 Q240,416 216,416" stroke="#f59e0b" stroke-width="1.5" fill="none" marker-end="url(#sa)"/>
+      <text x="258" y="411" fill="#f59e0b" font-size="8">WAIT → BUILD (repeat cycle)</text>
+
+      <!-- divider and annotation -->
+      <line x1="10" y1="435" x2="810" y2="435" stroke="#1a2236" stroke-width="1" stroke-dasharray="2,4"/>
+      <text x="412" y="450" text-anchor="middle" fill="#4a5568" font-size="9">Cycle repeats indefinitely while SURV_ENABLE = 1</text>
+      <text x="412" y="464" text-anchor="middle" fill="#4a5568" font-size="9">Set SURV_ENABLE = 0 at any time → immediate abort + RTL</text>
+    </svg>
+  </div>
+</div>
+
+<!-- ── S6: state machine + summary ──────── -->
+<div class="slide hidden-right" id="s6">
+  <div class="slide-tag">Slide 06 — State Machine &amp; Summary</div>
+  <h2 class="slide-h">AP_AutoSurvey State Machine</h2>
+  <div class="sm-wrap">
+    <svg viewBox="0 0 660 170" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="m1" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto">
+          <path d="M0,0 L7,2.5 L0,5 Z" fill="#8899aa"/>
+        </marker>
+        <marker id="m2" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto">
+          <path d="M0,0 L7,2.5 L0,5 Z" fill="#ef4444"/>
+        </marker>
+      </defs>
+
+      <!-- states -->
+      <rect x="10" y="55" width="90" height="42" rx="20" fill="#0f1628" stroke="#8899aa" stroke-width="1.5"/>
+      <text x="55" y="81" text-anchor="middle" fill="#e2e8f0" font-size="11" font-weight="600">IDLE</text>
+
+      <rect x="165" y="55" width="90" height="42" rx="20" fill="#0f1628" stroke="#f59e0b" stroke-width="1.5"/>
+      <text x="210" y="81" text-anchor="middle" fill="#f59e0b" font-size="11" font-weight="600">BUILD</text>
+
+      <rect x="320" y="55" width="90" height="42" rx="20" fill="#0f1628" stroke="#22c55e" stroke-width="1.5"/>
+      <text x="365" y="81" text-anchor="middle" fill="#22c55e" font-size="11" font-weight="600">FLY</text>
+
+      <rect x="475" y="55" width="90" height="42" rx="20" fill="#0f1628" stroke="#4080ff" stroke-width="1.5"/>
+      <text x="520" y="81" text-anchor="middle" fill="#4080ff" font-size="11" font-weight="600">WAIT</text>
+
+      <!-- transitions forward -->
+      <line x1="100" y1="76" x2="165" y2="76" stroke="#8899aa" stroke-width="1.5" marker-end="url(#m1)"/>
+      <text x="132" y="70" text-anchor="middle" fill="#8899aa" font-size="8">ENABLE=1</text>
+
+      <line x1="255" y1="76" x2="320" y2="76" stroke="#f59e0b" stroke-width="1.5" marker-end="url(#m1)"/>
+      <text x="287" y="70" text-anchor="middle" fill="#f59e0b" font-size="8">mission built</text>
+
+      <line x1="410" y1="76" x2="475" y2="76" stroke="#22c55e" stroke-width="1.5" marker-end="url(#m1)"/>
+      <text x="442" y="70" text-anchor="middle" fill="#22c55e" font-size="8">RTL complete</text>
+
+      <!-- WAIT → BUILD loop (arc over top) -->
+      <path d="M520,55 Q520,20 365,20 Q210,20 210,55" stroke="#4080ff" stroke-width="1.5" fill="none" marker-end="url(#m1)"/>
+      <text x="365" y="14" text-anchor="middle" fill="#4080ff" font-size="8">60 min elapsed</text>
+
+      <!-- ENABLE=0 abort arc (bottom) -->
+      <path d="M365,97 Q365,140 55,140 Q55,140 55,97" stroke="#ef4444" stroke-width="1" stroke-dasharray="4,3" fill="none" marker-end="url(#m2)"/>
+      <text x="210" y="158" text-anchor="middle" fill="#ef4444" font-size="8">SURV_ENABLE = 0 (abort at any state)</text>
+    </svg>
+  </div>
+
+  <p class="slide-sub" style="margin-top:4px">The state machine runs at 3 Hz from <code style="color:var(--accent);font-family:'JetBrains Mono',monospace;font-size:11px">Copter::three_hz_loop()</code>. A 45-second boot guard prevents premature arming before EKF initialises.</p>
+
+  <div class="summary-grid" style="margin-top:8px">
+    <div class="sum-card">
+      <div class="sum-label">Survey area</div>
+      <div class="sum-val">49,300<span class="sum-unit"> m²</span></div>
+    </div>
+    <div class="sum-card">
+      <div class="sum-label">Lanes × waypoints</div>
+      <div class="sum-val">15<span class="sum-unit"> × 2 + 3 = 33</span></div>
+    </div>
+    <div class="sum-card">
+      <div class="sum-label">Survey altitude</div>
+      <div class="sum-val">50<span class="sum-unit"> m AGL</span></div>
+    </div>
+    <div class="sum-card">
+      <div class="sum-label">Repeat interval</div>
+      <div class="sum-val">60<span class="sum-unit"> min</span></div>
+    </div>
+    <div class="sum-card">
+      <div class="sum-label">Factory centre</div>
+      <div class="sum-val" style="font-size:12px">12.87597°N</div>
+      <div class="sum-unit">79.86275°E</div>
+    </div>
+    <div class="sum-card">
+      <div class="sum-label">Hardware</div>
+      <div class="sum-val" style="font-size:12px">CUAVv5</div>
+      <div class="sum-unit">STM32H7 · ArduCopter 4.6</div>
+    </div>
+  </div>
+</div>
+
+</div><!-- /deck -->
+
+<!-- dots -->
+<div id="dots">
+  <div class="dot active" data-i="0"></div>
+  <div class="dot" data-i="1"></div>
+  <div class="dot" data-i="2"></div>
+  <div class="dot" data-i="3"></div>
+  <div class="dot" data-i="4"></div>
+  <div class="dot" data-i="5"></div>
+</div>
+
+<script>
+const slides = Array.from(document.querySelectorAll('.slide'));
+const dots   = Array.from(document.querySelectorAll('.dot'));
+const nav    = document.getElementById('nav-info');
+let cur = 0;
+
+function go(n) {
+  const prev = cur;
+  cur = Math.max(0, Math.min(slides.length - 1, n));
+  if (cur === prev) return;
+
+  slides[prev].classList.add(cur > prev ? 'hidden-left' : 'hidden-right');
+  slides[prev].classList.remove('hidden-left', 'hidden-right');
+  // settle the old slide
+  const dir = cur > prev ? 'hidden-left' : 'hidden-right';
+  slides[prev].classList.add(dir);
+
+  // bring in new slide
+  slides[cur].classList.remove('hidden-left', 'hidden-right');
+
+  dots.forEach((d, i) => d.classList.toggle('active', i === cur));
+  nav.textContent = `${String(cur+1).padStart(2,'0')} / ${String(slides.length).padStart(2,'0')}`;
+}
+
+document.getElementById('prev-btn').onclick = () => go(cur - 1);
+document.getElementById('next-btn').onclick = () => go(cur + 1);
+dots.forEach(d => d.onclick = () => go(+d.dataset.i));
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight' || e.key === 'ArrowDown') go(cur + 1);
+  if (e.key === 'ArrowLeft'  || e.key === 'ArrowUp')   go(cur - 1);
+});
+
+// touch swipe
+let tx = 0;
+document.getElementById('deck').addEventListener('touchstart', e => { tx = e.touches[0].clientX; }, {passive:true});
+document.getElementById('deck').addEventListener('touchend', e => {
+  const dx = e.changedTouches[0].clientX - tx;
+  if (Math.abs(dx) > 50) go(dx < 0 ? cur + 1 : cur - 1);
+}, {passive:true});
+</script>
